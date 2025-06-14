@@ -6,7 +6,7 @@ On this repository, there are 3 examples images you can use for a test:
 - "2. Image 2.jpg"
 - "3. Image 3.jpg"
 
-By double clicking on "run.bat", you'll get a final image "combined_image.jpg" that'll give you this result:
+By double clicking on **run.bat**, you'll get a final image named **combined_image.jpg** that'll give you this result:
 
 ![combined_image](https://github.com/user-attachments/assets/d2ddfeae-d2c7-4c2b-8f37-f9d9977715f0)
 
@@ -17,6 +17,10 @@ You can also change the title [here](https://github.com/BigStationW/Compare-pict
 ```git clone https://github.com/BigStationW/Compare-pictures/```
 
 
-## 2. Install the needed python packages
+## 2. Install the required Python packages
 ```pip install -r requirements.txt```
+
+## 3. Your images must be on the same folder as [the script](https://github.com/BigStationW/Compare-pictures/blob/main/combine.py) and the run.bat file
+- Naming the files as "1. X.jpg", "2. Y.jpg" and so on tells the program the order in which the images should appear from left to right.
+- The images can be in any of the following formats: '.jpg', '.jpeg', '.png', '.bmp' or '.webp'
 
