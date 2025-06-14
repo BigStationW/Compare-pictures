@@ -1,1 +1,2 @@
 python combine.py
+pause
