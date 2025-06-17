@@ -7,7 +7,7 @@ import math
 import re
 
 # Title text for the video
-title_text = "I2V 720x720x81f, 4steps, LCM sampler, FlowMatchSigmas Scheduler, cfg 1"
+title_text = "This is a title."
 
 # Natural sort helper
 def natural_sort_key(s):
