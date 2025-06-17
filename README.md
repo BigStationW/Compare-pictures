@@ -24,8 +24,8 @@ You can change the title [here](https://github.com/BigStationW/Compare-pictures-
 ## 2. Install the required Python packages
 ```pip install -r requirements.txt```
 
-## 3. Your images must be on the same folder as [the script](https://github.com/BigStationW/Compare-pictures/blob/main/combine.py) and the run.bat file
-- Naming the files as "1. X.jpg", "2. Y.jpg" and so on tells the program the order in which the images should appear from left to right.
+## 3. Your images/videos must be on the same folder as [the script](https://github.com/BigStationW/Compare-pictures/blob/main/combine.py) and the run.bat file
+- Naming the files as "1. X.jpg", "2. Y.jpg" and so on tells the script the order in which the images should appear from left to right.
 - The images can be in any of the following formats: ['.jpg', '.jpeg', '.png', '.bmp', '.webp']
 - The videos can be in any of those following formats: ['.mp4', '.avi', '.mov', '.mkv', '.webm']
 
