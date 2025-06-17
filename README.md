@@ -18,7 +18,7 @@ You can change the title [here](https://github.com/BigStationW/Compare-pictures-
 
 
 ## 1. Clone the repository somewhere on your PC
-```git clone https://github.com/BigStationW/Compare-pictures/```
+```git clone https://github.com/BigStationW/Compare-pictures-and-videos```
 
 
 ## 2. Install the required Python packages
