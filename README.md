@@ -1,7 +1,7 @@
 # Compare-pictures-and-videos
-Combines several images into one (for comparison purposes).
+Combines several images/videos into one (for comparison purposes).
 
-On this repository, there are 3 examples images you can use for a test:
+On this repository, there are 3 images examples you can use for a test:
 - "1. Image 1.jpg"
 - "2. Image 2.jpg"
 - "3. Image 3.jpg"
