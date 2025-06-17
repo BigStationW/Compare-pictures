@@ -10,7 +10,7 @@ By double clicking on **run.bat**, you'll get a final image named **combined_ima
 
 ![combined_image](https://github.com/user-attachments/assets/d2ddfeae-d2c7-4c2b-8f37-f9d9977715f0)
 
-It's also working for videos:
+It's also working for videos (and videos + images):
 
 ![ezgif-20e4452739f7de-FINAL](https://github.com/user-attachments/assets/aa8f5096-abd6-4158-9757-d550b9894af6)
 
