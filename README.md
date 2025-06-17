@@ -1,4 +1,4 @@
-# Compare-pictures
+# Compare-pictures-and-videos
 Combines several images into one (for comparison purposes).
 
 On this repository, there are 3 examples images you can use for a test:
