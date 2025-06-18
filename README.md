@@ -14,7 +14,7 @@ It's also working for videos (and videos + images):
 
 ![ezgif-20e4452739f7de-FINAL](https://github.com/user-attachments/assets/aa8f5096-abd6-4158-9757-d550b9894af6)
 
-You can change the title [here](https://github.com/BigStationW/Compare-pictures-and-videos/blob/6f66c25a5fb9b9575c2e92b21a75297d41b7a8d6/combine.py#L10)
+You can change the title [here](https://github.com/BigStationW/Compare-pictures-and-videos/blob/5b8df42de9f0549b50b0b95328e0efed86b9be14/combine.py#L10)
 
 
 ## 1. Clone the repository somewhere on your PC
