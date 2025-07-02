@@ -15,8 +15,8 @@ import glob
 import math
 import re
 
-# Title text for the video
-title_text = 'This is a title.'
+# Title text for the video (set to "" or " " to disable the title bar)
+title_text = "This is a title."
 
 def natural_sort_key(s):
     return [int(text) if text.isdigit() else text.lower() for text in re.split(r'(\d+)', s)]
@@ -111,10 +111,7 @@ for media_file in media_files:
 # Calculate actual dimensions for each clip
 clip_dimensions = []
 for i, clip in enumerate(clips):
-    if clip_types[i] == 'image':
-        frame = clip.get_frame(0)
-    else:
-        frame = clip.get_frame(0)
+    frame = clip.get_frame(0)
     h, w = frame.shape[:2]
     clip_dimensions.append((w, h))
 
@@ -127,285 +124,154 @@ else:
     grid_cols = math.ceil(math.sqrt(num_clips))
     grid_rows = math.ceil(num_clips / grid_cols)
 
-# Calculate row heights and column widths for each grid position
-def calculate_grid_dimensions():
-    row_heights = []
-    col_widths_by_row = []  # Track column widths for each row separately
-    
-    for row_idx in range(grid_rows):
-        max_height_in_row = 0
-        col_widths_in_row = []
-        
-        for col_idx in range(grid_cols):
-            clip_idx = row_idx * grid_cols + col_idx
-            if clip_idx < len(clips):
-                w, h = clip_dimensions[clip_idx]
-                max_height_in_row = max(max_height_in_row, h)
-                col_widths_in_row.append(w)
-            else:
-                col_widths_in_row.append(0)
-        
-        row_heights.append(max_height_in_row)
-        col_widths_by_row.append(col_widths_in_row)
-    
-    return row_heights, col_widths_by_row
-
-row_heights, col_widths_by_row = calculate_grid_dimensions()
 
 def wrap_text(text, max_width, font_scale, thickness):
-    """Wrap text to fit within specified width"""
     words = text.split()
-    if not words:
-        return []
-    
-    lines = []
-    current_line = words[0]
-    
+    if not words: return []
+    lines, current_line = [], words[0]
     for word in words[1:]:
         test_line = current_line + ' ' + word
         (line_width, _), _ = cv2.getTextSize(test_line, font, font_scale, thickness)
-        if line_width <= max_width - 20:
-            current_line = test_line
-        else:
-            lines.append(current_line)
-            current_line = word
+        if line_width <= max_width - 20: current_line = test_line
+        else: lines.append(current_line); current_line = word
     lines.append(current_line)
     return lines
 
-def calculate_max_caption_height_for_row(row_idx, grid_cols, display_names, row_height):
-    """Calculate the maximum caption height needed for any item in this row"""
+def calculate_max_caption_height_for_row(row_idx, display_names, row_height, scaled_widths_in_row):
+    has_any_text_in_row = False
+    start_clip_idx = row_idx * grid_cols
+    end_clip_idx = min(start_clip_idx + grid_cols, len(display_names))
+    for i in range(start_clip_idx, end_clip_idx):
+        if display_names[i] and display_names[i].strip():
+            has_any_text_in_row = True
+            break 
+
+    if not has_any_text_in_row:
+        return 0 
+
     caption_font_scale = FILENAME_FONT_SCALE_BASE * (row_height / 800)
     caption_thickness = 2 if FONT_BOLD else 1
     caption_padding = 30
     line_height = int(35 * caption_font_scale)
-    
     max_lines = 0
-    
-    for col_idx in range(grid_cols):
+    for i, image_width in enumerate(scaled_widths_in_row):
+        col_idx = i
         clip_idx = row_idx * grid_cols + col_idx
-        if clip_idx < len(display_names):
-            display_name = display_names[clip_idx]
-            # Use original image width for text wrapping
-            if clip_idx < len(clip_dimensions):
-                img_width = clip_dimensions[clip_idx][0]
-                wrapped_lines = wrap_text(display_name, img_width, caption_font_scale, caption_thickness)
-                max_lines = max(max_lines, len(wrapped_lines))
+        display_name = display_names[clip_idx]
+        wrapped_lines = wrap_text(display_name, image_width, caption_font_scale, caption_thickness)
+        max_lines = max(max_lines, len(wrapped_lines))
     
-    return max_lines * line_height + caption_padding * 2
+    return max_lines * line_height + caption_padding * 2 if max_lines > 0 else 0
 
 def add_text_to_frame(frame, text, position, font_scale=1, color=(255, 255, 255), thickness=2):
-    """Add text to frame"""
     cv2.putText(frame, text, position, font, font_scale, color, thickness, lineType=cv2.LINE_AA)
     return frame
 
-def resize_and_center_frame(frame, target_height):
-    """Resize frame to target height while maintaining aspect ratio"""
-    h, w = frame.shape[:2]
-    
-    # Calculate new width based on target height
-    scale = target_height / h
-    new_width = int(w * scale)
-    new_height = target_height
-    
-    # Resize the frame
-    resized_frame = cv2.resize(frame, (new_width, new_height), interpolation=cv2.INTER_LANCZOS4)
-    
-    return resized_frame
-
-def create_frame_with_caption(frame, display_name, target_height, caption_height):
-    """Create a frame with properly aligned caption using uniform height"""
-    # Resize frame to target height
-    resized_frame = resize_and_center_frame(frame, target_height)
-    frame_width = resized_frame.shape[1]
-    
-    caption_font_scale = FILENAME_FONT_SCALE_BASE * (target_height / 800)
-    caption_thickness = 2 if FONT_BOLD else 1
-    caption_padding = 30
-    line_height = int(35 * caption_font_scale)
-    
-    # Create the final frame with caption area
-    frame_with_text = np.zeros((target_height + caption_height, frame_width, 3), dtype=np.uint8)
-    frame_with_text[:target_height, :] = resized_frame
-    
-    # Add caption text
-    wrapped_lines = wrap_text(display_name, frame_width, caption_font_scale, caption_thickness)
-    
-    # Center the text block vertically within the caption area
-    total_text_height = len(wrapped_lines) * line_height
-    text_start_y = target_height + (caption_height - total_text_height) // 2
-    
-    for i, line in enumerate(wrapped_lines):
-        (line_width, _), _ = cv2.getTextSize(line, font, caption_font_scale, caption_thickness)
-        text_x = (frame_width - line_width) // 2
-        text_y = text_start_y + i * line_height + int(line_height * 0.8)
-        add_text_to_frame(frame_with_text, line, (text_x, text_y), 
-                         font_scale=caption_font_scale, thickness=caption_thickness)
-    
-    return frame_with_text
-
 def process_frame(t):
-    # Calculate target width for proportional scaling
-    def calculate_proportional_widths(row_frames_info, target_width, uniform_height):
-        """Calculate proportional widths so all frames in a row sum to target_width"""
-        if not row_frames_info:
-            return []
-        
-        # Calculate what each frame's width would be at uniform height
-        natural_widths = []
-        for clip_idx in row_frames_info:
-            original_w, original_h = clip_dimensions[clip_idx]
-            # Width when scaled to uniform height
-            scaled_width = int(original_w * (uniform_height / original_h))
-            natural_widths.append(scaled_width)
-        
-        # Scale all widths proportionally to fit target width
-        total_natural_width = sum(natural_widths)
-        if total_natural_width == 0:
-            return [target_width // len(natural_widths)] * len(natural_widths)
-        
-        scale_factor = target_width / total_natural_width
-        proportional_widths = [int(w * scale_factor) for w in natural_widths]
-        
-        # Adjust for rounding errors - make sure total equals target_width
-        width_diff = target_width - sum(proportional_widths)
-        if width_diff != 0:
-            proportional_widths[-1] += width_diff
-        
-        return proportional_widths
+    row_layout_info = []
+    max_overall_width = 0
 
-    # First pass: determine the maximum natural row width
-    max_natural_width = 0
-    row_info = []
-    
     for row_idx in range(grid_rows):
-        uniform_height = row_heights[row_idx]
-        row_clip_indices = []
-        row_natural_width = 0
-        
+        if row_idx * grid_cols >= num_clips: continue
+        max_h = 0
         for col_idx in range(grid_cols):
             clip_idx = row_idx * grid_cols + col_idx
             if clip_idx < num_clips:
-                row_clip_indices.append(clip_idx)
-                original_w, original_h = clip_dimensions[clip_idx]
-                scaled_width = int(original_w * (uniform_height / original_h))
-                row_natural_width += scaled_width
+                _, h = clip_dimensions[clip_idx]
+                max_h = max(max_h, h)
         
-        row_info.append((row_clip_indices, row_natural_width))
-        max_natural_width = max(max_natural_width, row_natural_width)
+        uniform_height = max_h if max_h > 0 else 1
+        scaled_widths = []
+
+        for col_idx in range(grid_cols):
+            clip_idx = row_idx * grid_cols + col_idx
+            if clip_idx < num_clips:
+                w, h = clip_dimensions[clip_idx]
+                new_w = int(w * (uniform_height / h)) if h > 0 else 0
+                scaled_widths.append(new_w)
+        
+        natural_width = sum(scaled_widths)
+        max_overall_width = max(max_overall_width, natural_width)
+        
+        row_layout_info.append({
+            "row_idx": row_idx,
+            "scaled_widths": scaled_widths,
+            "natural_width": natural_width,
+            "uniform_height": uniform_height,
+        })
+
+    all_final_rows = []
     
-    # Use max natural width as target width for all rows
-    target_width = max_natural_width
-    
-    # Second pass: create frames with proportional scaling
-    rows = []
-    
-    for row_idx in range(grid_rows):
-        uniform_height = row_heights[row_idx]
-        row_caption_height = calculate_max_caption_height_for_row(row_idx, grid_cols, display_names, uniform_height)
-        row_clip_indices, _ = row_info[row_idx]
+    for layout_info in row_layout_info:
+        row_idx = layout_info["row_idx"]
+        uniform_height = layout_info["uniform_height"]
+        scaled_widths = layout_info["scaled_widths"]
+        natural_width = layout_info["natural_width"]
         
-        if not row_clip_indices:
-            continue
+        row_caption_height = calculate_max_caption_height_for_row(row_idx, display_names, uniform_height, scaled_widths)
         
-        # Calculate proportional widths for this row
-        proportional_widths = calculate_proportional_widths(row_clip_indices, target_width, uniform_height)
-        
-        row_frames = []
-        
-        for i, clip_idx in enumerate(row_clip_indices):
-            target_frame_width = proportional_widths[i]
+        cells_in_row = []
+        for i, image_width in enumerate(scaled_widths):
+            col_idx = i
+            clip_idx = row_idx * grid_cols + col_idx
+            
             clip = clips[clip_idx]
-            clip_type = clip_types[clip_idx]
-            display_name = display_names[clip_idx]
+            frame = clip.get_frame(min(t, clip.duration - 0.001)) if clip_types[clip_idx] == 'video' else clip.get_frame(0)
+            resized_frame = cv2.resize(frame, (image_width, uniform_height), interpolation=cv2.INTER_LANCZOS4)
+            
+            cell = np.zeros((uniform_height + row_caption_height, image_width, 3), dtype=np.uint8)
+            cell[:uniform_height, :] = resized_frame
 
-            # Get frame data
-            if clip_type == 'image':
-                frame = clip.get_frame(0)
-            else:
-                if t < clip.duration:
-                    frame = clip.get_frame(min(t, clip.duration - 0.001))
-                else:
-                    frame = clip.get_frame(clip.duration - 0.001)
-
-            # Resize frame to exact target width and uniform height
-            resized_frame = cv2.resize(frame, (target_frame_width, uniform_height), interpolation=cv2.INTER_LANCZOS4)
+            if row_caption_height > 0:
+                display_name = display_names[clip_idx]
+                caption_font_scale = FILENAME_FONT_SCALE_BASE * (uniform_height / 800)
+                caption_thickness = 2 if FONT_BOLD else 1
+                line_height = int(35 * caption_font_scale)
+                wrapped_lines = wrap_text(display_name, image_width, caption_font_scale, caption_thickness)
+                total_text_height = len(wrapped_lines) * line_height
+                text_start_y = uniform_height + (row_caption_height - total_text_height) // 2
+                for j, line in enumerate(wrapped_lines):
+                    (line_width, _), _ = cv2.getTextSize(line, font, caption_font_scale, caption_thickness)
+                    text_x = (image_width - line_width) // 2
+                    text_y = text_start_y + j * line_height + int(line_height * 0.8)
+                    add_text_to_frame(cell, line, (text_x, text_y), font_scale=caption_font_scale, thickness=caption_thickness)
             
-            # Create frame with caption
-            frame_with_text = np.zeros((uniform_height + row_caption_height, target_frame_width, 3), dtype=np.uint8)
-            frame_with_text[:uniform_height, :] = resized_frame
+            cells_in_row.append(cell)
             
-            # Add caption text
-            caption_font_scale = FILENAME_FONT_SCALE_BASE * (uniform_height / 800)
-            caption_thickness = 2 if FONT_BOLD else 1
-            line_height = int(35 * caption_font_scale)
-            
-            wrapped_lines = wrap_text(display_name, target_frame_width, caption_font_scale, caption_thickness)
-            
-            # Center the text block vertically within the caption area
-            total_text_height = len(wrapped_lines) * line_height
-            text_start_y = uniform_height + (row_caption_height - total_text_height) // 2
-            
-            for j, line in enumerate(wrapped_lines):
-                (line_width, _), _ = cv2.getTextSize(line, font, caption_font_scale, caption_thickness)
-                text_x = (target_frame_width - line_width) // 2
-                text_y = text_start_y + j * line_height + int(line_height * 0.8)
-                add_text_to_frame(frame_with_text, line, (text_x, text_y), 
-                                 font_scale=caption_font_scale, thickness=caption_thickness)
-            
-            row_frames.append(frame_with_text)
+        row_with_captions = np.hstack(cells_in_row)
         
-        # Combine frames in this row
-        if row_frames:
-            row = np.hstack(row_frames)
-            rows.append(row)
+        final_row_canvas = np.zeros((row_with_captions.shape[0], max_overall_width, 3), dtype=np.uint8)
+        x_offset = (max_overall_width - natural_width) // 2
+        final_row_canvas[:, x_offset : x_offset + natural_width] = row_with_captions
+        
+        all_final_rows.append(final_row_canvas)
 
-    # Use the target width for title
-    combined_width = target_width
+    grid = np.vstack(all_final_rows) if all_final_rows else None
 
-    # Create title bar (rest of the title code remains the same)
+    if not (title_text and title_text.strip()):
+        if grid is None: return np.zeros((100, 100, 3), dtype=np.uint8)
+        return grid.astype(np.uint8)
+
+    combined_width = grid.shape[1] if grid is not None else max_overall_width
+    if combined_width == 0: combined_width = 800 # Fallback
+
     title_font_scale = TITLE_FONT_SCALE_BASE * (combined_width / 700)
     title_thickness = 2 if FONT_BOLD else 1
     title_padding = 40
-
     (text_width, text_height), _ = cv2.getTextSize(title_text, font, title_font_scale, title_thickness)
 
-    margin = 40
-    if text_width > combined_width - margin:
-        # Wrap title text
-        words = title_text.split()
-        lines = []
-        current_line = words[0]
-        for word in words[1:]:
-            test_line = current_line + " " + word
-            (test_width, _), _ = cv2.getTextSize(test_line, font, title_font_scale, title_thickness)
-            if test_width <= combined_width - margin:
-                current_line = test_line
-            else:
-                lines.append(current_line)
-                current_line = word
-        lines.append(current_line)
+    lines = wrap_text(title_text, combined_width - 40, title_font_scale, title_thickness)
+    line_spacing = int(text_height * 1.4)
+    title_height = line_spacing * len(lines) + title_padding * 2
+    title_bar = np.zeros((title_height, combined_width, 3), dtype=np.uint8)
 
-        line_spacing = int(text_height * 1.4)
-        title_height = line_spacing * len(lines) + title_padding * 2
-        title_bar = np.zeros((title_height, combined_width, 3), dtype=np.uint8)
+    for i, line in enumerate(lines):
+        (line_width, _), _ = cv2.getTextSize(line, font, title_font_scale, title_thickness)
+        line_x = (combined_width - line_width) // 2
+        line_y = title_padding + i * line_spacing + text_height
+        add_text_to_frame(title_bar, line, (line_x, line_y), font_scale=title_font_scale, thickness=title_thickness)
 
-        for i, line in enumerate(lines):
-            (line_width, _), _ = cv2.getTextSize(line, font, title_font_scale, title_thickness)
-            line_x = (combined_width - line_width) // 2
-            line_y = title_padding + i * line_spacing + text_height
-            add_text_to_frame(title_bar, line, (line_x, line_y), 
-                             font_scale=title_font_scale, thickness=title_thickness)
-    else:
-        title_height = text_height + title_padding * 2
-        title_bar = np.zeros((title_height, combined_width, 3), dtype=np.uint8)
-        line_x = (combined_width - text_width) // 2
-        line_y = title_padding + text_height
-        add_text_to_frame(title_bar, title_text, (line_x, line_y), 
-                         font_scale=title_font_scale, thickness=title_thickness)
-
-    # Combine all rows
-    if rows:
-        grid = np.vstack(rows)
+    if grid is not None:
         combined = np.vstack([title_bar, grid])
     else:
         combined = title_bar
@@ -415,11 +281,10 @@ def process_frame(t):
 # Generate output
 if has_videos:
     output_file = "combined_video.mp4"
-    max_duration = max(clip.duration for clip in clips)
+    max_duration = max((clip.duration for clip in clips if clip.duration is not None), default=image_duration)
     final_clip = VideoClip(make_frame=process_frame, duration=max_duration)
-    final_clip.write_videofile(output_file, fps=24)
+    final_clip.write_videofile(output_file, fps=24, codec='libx264', audio=False)
     print(f"Video saved as: {output_file}")
-    final_clip.close()
 else:
     output_file = "combined_image.jpg"
     combined_frame = process_frame(0)
@@ -429,4 +294,5 @@ else:
 
 # Clean up
 for clip in clips:
-    clip.close()
+    if isinstance(clip, VideoFileClip):
+        clip.close()
